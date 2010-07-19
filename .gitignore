@@ -16,3 +16,4 @@ announcement.txt
 coverage
 doc
 pkg
+/examples/cucumber/greenletters.log

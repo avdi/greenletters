@@ -9,10 +9,13 @@ task :default => 'test:run'
 task 'gem:release' => 'test:run'
 
 Bones {
-  name  'greenletters'
-  authors  'Avdi Grimm'
-  email  'avdi@avdi.org'
-  url  'http://github.com/avdi/greenletters'
+  name         'greenletters'
+  authors      'Avdi Grimm'
+  email        'avdi@avdi.org'
+  url          'http://github.com/avdi/greenletters'
   ignore_file  '.gitignore'
+  readme_file  'README.org'
+
+  summary      'A Ruby command-line automation framework a la Expect'
 }
 

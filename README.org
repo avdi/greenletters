@@ -1,0 +1,78 @@
+#+Title:        Greenletters README
+#+AUTHOR:       Avdi Grimm
+#+EMAIL:        avdi@avdi.org
+
+# Configuration:
+#+STARTUP:      odd
+#+STARTUP:      hi
+#+STARTUP:      hidestars
+
+
+* Synopsis
+
+#+begin_src ruby
+  require 'greenletters'
+  adv = Greenletters::Process.new("adventure", :transcript => $stdout)
+  adv.on(:output, /welcome to adventure/i) do |process, match_data|
+    adv << "no\n"
+  end
+
+  puts "Starting adventure..."
+  adv.start!
+  adv.wait_for(:output, /you are standing at the end of a road/i)
+  adv << "east\n"
+  adv.wait_for(:output, /inside a building/i)
+  adv << "quit\n"
+  adv.wait_for(:output, /really want to quit/i)
+  adv << "yes\n"
+  adv.wait_for(:exit)
+  puts "Adventure has exited."
+#+end_src
+
+* What
+
+  Greenletters is a console interaction automation library similar to [[http://directory.fsf.org/project/expect/][GNU
+  Expect]]. You can use it to script interactions with command-line programs.
+
+* Why
+  Because Ruby's built-in expect.rb is pretty underpowered and I wanted to drive
+  command-line applications from Ruby, not TCL.
+
+* Who
+  Greenletters is by [[mailto:avdi@avdi.org][Avdi Grimm]].
+
+* Where
+  http://github.com/avdi/greenletters
+
+* How
+  Greenletters uses the pty.rb library under the covers to create a UNIX
+  pseudoterminal under Ruby's control. Of course, this means that it is
+  *NIX-only; Windows users need not apply.
+
+  The advantage of using a PTY is that *any* output - inclding output written to
+  the console instead of STDOUT/STDERR - will be captured by Greenletters.
+
+* LICENSE
+
+(The MIT License)
+
+Copyright (c) 2010 Avdi Grimm
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
