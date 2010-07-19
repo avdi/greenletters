@@ -10,15 +10,22 @@
 
 * Synopsis
 
+  *See introductory blog post at http://avdi.org/devblog/2010/07/19/greenletters-painless-automation-and-testing-for-command-line-applications/*
+
 #+BEGIN_SRC ruby
   require 'greenletters'
+
   adv = Greenletters::Process.new("adventure", :transcript => $stdout)
+
+  # Install a handler which may be triggered at any time
   adv.on(:output, /welcome to adventure/i) do |process, match_data|
     adv << "no\n"
   end
 
   puts "Starting adventure..."
   adv.start!
+
+  # Wait for the specified pattern before proceeding
   adv.wait_for(:output, /you are standing at the end of a road/i)
   adv << "east\n"
   adv.wait_for(:output, /inside a building/i)
