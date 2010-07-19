@@ -10,7 +10,7 @@
 
 * Synopsis
 
-#+begin_src ruby
+#+BEGIN_SRC ruby
   require 'greenletters'
   adv = Greenletters::Process.new("adventure", :transcript => $stdout)
   adv.on(:output, /welcome to adventure/i) do |process, match_data|
@@ -27,7 +27,7 @@
   adv << "yes\n"
   adv.wait_for(:exit)
   puts "Adventure has exited."
-#+end_src
+#+END_SRC
 
 Or, in Cucumber format:
 
