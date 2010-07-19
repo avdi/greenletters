@@ -10,7 +10,7 @@
 
 * Synopsis
 
-  *See introductory blog post at http://avdi.org/devblog/2010/07/19/greenletters-painless-automation-and-testing-for-command-line-applications/*
+  *See introductory blog post at [[http://avdi.org/devblog/2010/07/19/greenletters-painless-automation-and-testing-for-command-line-applications/][HERE]].*
 
 #+BEGIN_SRC ruby
   require 'greenletters'
