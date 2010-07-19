@@ -16,6 +16,15 @@ Bones {
   ignore_file  '.gitignore'
   readme_file  'README.org'
 
-  summary      'A Ruby command-line automation framework a la Expect'
+  summary      'A Ruby console automation framework a la Expect'
+
+  description  <<-END
+    Greenletterrs is a console automation framework, similar to the classic
+    utility Expect. You give it a command to execute, and tell it which outputs
+    or events to expect and how to respond to them.
+
+    Greenletters also includes a set of Cucumber steps which simplify the task
+    of spcifying interactive command-line applications.
+  END
 }
 

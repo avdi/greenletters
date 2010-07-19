@@ -29,6 +29,27 @@
   puts "Adventure has exited."
 #+end_src
 
+Or, in Cucumber format:
+
+#+BEGIN_SRC
+    Given process activity is logged to "greenletters.log"
+    Given a process "adventure" from command "adventure"
+    Given I reply "no" to output "Would you like instructions?" from process "adventure"
+    Given I reply "yes" to output "Do you really want to quit" from process "adventure"
+    When I execute the process "adventure"
+    Then I should see the following output from process "adventure":
+    """
+    You are standing at the end of a road before a small brick building.
+    Around you is a forest.  A small stream flows out of the building and
+    down a gully.
+    """
+    When I enter "east" into process "adventure"
+    Then I should see the following output from process "adventure":
+    """
+    You are inside a building, a well house for a large spring.
+    """
+#+END_SRC
+
 * What
 
   Greenletters is a console interaction automation library similar to [[http://directory.fsf.org/project/expect/][GNU
@@ -51,6 +72,14 @@
 
   The advantage of using a PTY is that *any* output - inclding output written to
   the console instead of STDOUT/STDERR - will be captured by Greenletters.
+
+* Cucumber
+  To use the Cucumber steps in your own feature files, put the following in your env.rb:
+
+#+BEGIN_SRC ruby
+require 'greenletters'
+require 'greenletters/cucumber_steps'
+#+END_SRC
 
 * LICENSE
 
