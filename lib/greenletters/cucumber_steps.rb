@@ -48,11 +48,51 @@ When /^I execute the process(?: "([^\"]*)")?$/ do |name|
   @greenletters_process_table[name].start!
 end
 
+When /^I wait for (\d+) bytes from the process(?: "([^\"]*)")?$/ do
+  |byte_length, name|
+  name ||= "default"
+  byte_length = byte_length.to_i
+  @greenletters_process_table[name].wait_for(:bytes, byte_length)
+end
+
+When /^I wait ([0-9.]+) seconds for output from the process(?: "([^\"]*)")?$/ do
+  |seconds, name|
+  name ||= "default"
+  seconds = seconds.to_i
+  @greenletters_process_table[name].wait_for(:timeout, seconds)
+end
+
+When /^I discard earlier outputs from the process(?: "([^\"]*)")?$/ do
+  |name|
+  name ||= "default"
+  @greenletters_process_table[name].flush_output_buffer!
+end
+
 Then /^I should see the following output(?: from process "([^\"]*)")?:$/ do
   |name, pattern|
   name ||= "default"
   pattern = greenletters_massage_pattern(pattern)
   @greenletters_process_table[name].wait_for(:output, pattern)
+end
+
+Then /^I should see all the following outputs(?: from process "([^\"]*)")?:$/ do
+  |name, table|
+
+  name ||= "default"
+  patterns = table.hashes.map { |hash|
+    greenletters_massage_pattern(hash['text'])
+  }
+  @greenletters_process_table[name].wait_for(:output, patterns, :operation => :all)
+end
+
+
+# Note: you may want to wait for output to be buffered before executing this
+# step. E.g. "When I wait on process for 1024 bytes or 0.1 seconds"
+Then /^I should not see the following output(?: from process "([^\"]*)")?:$/ do
+  |name, pattern|
+  name ||= "default"
+  pattern = greenletters_massage_pattern(pattern)
+  @greenletters_process_table[name].check_until(pattern).should be_nil
 end
 
 When /^I enter "([^\"]*)"(?: into process "([^\"]*)")?$/ do

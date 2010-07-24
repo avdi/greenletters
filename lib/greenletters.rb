@@ -123,6 +123,7 @@ module Greenletters
     attr_accessor :exclusive
     attr_accessor :logger
     attr_accessor :interruption
+    attr_reader   :options
 
     alias_method :exclusive?, :exclusive
 
@@ -131,6 +132,7 @@ module Greenletters
       @exclusive    = options.fetch(:exclusive) { false }
       @logger       = ::Logger.new($stdout)
       @interruption = :none
+      @options      = options
     end
 
     def call(process)
@@ -142,6 +144,7 @@ module Greenletters
   class OutputTrigger < Trigger
     def initialize(pattern=//, options={}, &block)
       super(options, &block)
+      options[:operation] ||= :all
       @pattern = pattern
     end
 
@@ -150,6 +153,13 @@ module Greenletters
     end
 
     def call(process)
+      case @pattern
+      when Array then match_multiple(process)
+      else match_one(process)
+      end
+    end
+
+    def match_one(process)
       scanner = process.output_buffer
       @logger.debug "matching #{@pattern.inspect} against #{scanner.rest.inspect}"
       if scanner.scan_until(@pattern)
@@ -160,16 +170,66 @@ module Greenletters
         false
       end
     end
+
+    def match_multiple(process)
+      op = options[:operation]
+      raise "Invalid operation #{op.inspect}" unless [:any, :all].include?(op)
+      scanner = process.output_buffer
+      @logger.debug "matching #{op} of multiple patterns against #{scanner.rest.inspect}"
+      starting_pos = scanner.pos
+      ending_pos   = starting_pos
+      result = @pattern.send("#{op}?") {|pattern|
+        scanner.pos = starting_pos
+        if (char_count = scanner.skip_until(pattern))
+          ending_pos = [ending_pos, starting_pos + char_count].max
+        end
+      }
+      if result
+        scanner.pos = ending_pos
+        true
+      else
+        scanner.pos = starting_pos
+        false
+      end
+    end
+  end
+
+  class BytesTrigger < Trigger
+    attr_reader :num_bytes
+
+    def initialize(num_bytes, options={}, &block)
+      super(options, &block)
+      @num_bytes = num_bytes
+    end
+
+    def to_s
+      "#{num_bytes} bytes of output"
+    end
+
+    def call(process)
+      @logger.debug "checking if #{num_bytes} byes have been received"
+      process.rest_size >= num_bytes
+    end
   end
 
   class TimeoutTrigger < Trigger
+    attr_reader :expiration_time
+
+    def initialize(expiration_time=Time.now+1.0, options={}, &block)
+      super(options, &block)
+      @expiration_time = case expiration_time
+                         when Time then expiration_time
+                         when Numeric then Time.now + expiration_time
+                         end
+    end
+
     def to_s
-      "timeout"
+      "timeout at #{expiration_time}"
     end
 
     def call(process)
       @block.call(process, process.blocker)
-      true
+      process.time >= expiration_time
     end
   end
 
@@ -207,7 +267,8 @@ module Greenletters
   end
 
   class Process
-    END_MARKER = '__GREENLETTERS_PROCESS_ENDED__'
+    END_MARKER        = '__GREENLETTERS_PROCESS_ENDED__'
+    DEFAULT_LOG_LEVEL = ::Logger::WARN
 
     # Shamelessly stolen from Rake
     RUBY_EXT =
@@ -230,8 +291,7 @@ module Greenletters
     attr_reader   :cwd          # Working directory for the command
 
     def_delegators :input_buffer, :puts, :write, :print, :printf, :<<
-    def_delegators :output_buffer, :read, :readpartial, :read_nonblock, :gets,
-                                   :getline
+    def_delegators :output_buffer, :rest, :rest_size, :check_until
     def_delegators  :blocker, :interruption, :interruption=
 
     def initialize(*args)
@@ -245,7 +305,7 @@ module Greenletters
       @cwd            = options.fetch(:cwd) {Dir.pwd}
       @logger   = options.fetch(:logger) {
         l = ::Logger.new($stdout)
-        l.level = ::Logger::WARN
+        l.level = DEFAULT_LOG_LEVEL
         l
       }
       @state         = :not_started
@@ -261,7 +321,7 @@ module Greenletters
     end
 
     def on(event, *args, &block)
-      t = add_trigger(event, *args, &block)
+      t = add_nonblocking_trigger(event, *args, &block)
     end
 
     def wait_for(event, *args, &block)
@@ -272,6 +332,12 @@ module Greenletters
       unblock!
       triggers.delete(t)
       raise
+    end
+
+    def add_nonblocking_trigger(event, *args, &block)
+      t = add_trigger(event, *args, &block)
+      catchup_trigger!(t)
+      t
     end
 
     def add_trigger(event, *args, &block)
@@ -296,6 +362,7 @@ module Greenletters
       t.time_to_live = 1
       @logger.debug "waiting for #{t}"
       self.blocker = t
+      catchup_trigger!(t)
       t
     end
 
@@ -350,6 +417,10 @@ module Greenletters
       @state == :ended
     end
 
+    def time
+      Time.now
+    end
+
     private
 
     attr_reader :triggers
@@ -372,9 +443,10 @@ module Greenletters
           input_handles  = input_buffer.string.empty? ? [] : [@input]
           output_handles = [@output]
           error_handles  = [@input, @output]
-          @logger.debug "select() on #{[output_handles, input_handles, error_handles].inspect}"
+          timeout        = shortest_timeout
+          @logger.debug "select() on #{[output_handles, input_handles, error_handles, timeout].inspect}"
           ready_handles = IO.select(
-            output_handles, input_handles, error_handles, 1.0)
+            output_handles, input_handles, error_handles, timeout)
           if ready_handles.nil?
             process_timeout
           else
@@ -402,8 +474,10 @@ module Greenletters
       @history << data
       @logger.debug format_input_for_log(data)
       @logger.debug "read #{data.size} bytes"
+      handle_triggers(:bytes)
       handle_triggers(:output)
       flush_triggers!(OutputTrigger) if ended?
+      flush_triggers!(BytesTrigger) if ended?
       # flush_output_buffer! unless ended?
     end
 
@@ -463,27 +537,33 @@ module Greenletters
       matches = 0
       triggers.grep(klass).each do |t|
         @logger.debug "checking #{event} against #{t}"
-        if t.call(self)         # match
+        check_trigger(t) do
           matches += 1
-          @logger.debug "match trigger #{t}"
-          if blocker.equal?(t)
-            unblock!
-          end
-          if t.time_to_live
-            if t.time_to_live > 1
-              t.time_to_live -= 1
-              @logger.debug "trigger ttl reduced to #{t.time_to_live}"
-            else
-              triggers.delete(t)
-              @logger.debug "trigger removed"
-            end
-          end
           break if t.exclusive?
-        else
-          @logger.debug "no match"
         end
       end
       matches > 0
+    end
+
+    def check_trigger(trigger)
+      if trigger.call(self)         # match
+        @logger.debug "match trigger #{trigger}"
+        if blocker.equal?(trigger)
+          unblock!
+        end
+        if trigger.time_to_live
+          if trigger.time_to_live > 1
+            trigger.time_to_live -= 1
+            @logger.debug "trigger ttl reduced to #{trigger.time_to_live}"
+          else
+            triggers.delete(trigger)
+            @logger.debug "trigger removed"
+          end
+        end
+        yield if block_given?
+      else
+        @logger.debug "no match"
+      end
     end
 
     def handle_end_marker
@@ -551,6 +631,10 @@ module Greenletters
       end
     end
 
+    def catchup_trigger!(trigger)
+      check_trigger(trigger)
+    end
+
     def format_output_for_log(text)
       "\n" + text.split("\n").map{|l| ">> #{l}"}.join("\n")
     end
@@ -559,6 +643,14 @@ module Greenletters
       "\n" + text.split("\n").map{|l| "<< #{l}"}.join("\n")
     end
 
+    def shortest_timeout
+      result = triggers.grep(TimeoutTrigger).map{|t|
+        t.expiration_time - Time.now
+      }.min
+      if result.nil? then result = 1.0 end
+      if result < 0 then result = 0 end
+      result
+    end
   end
 end
 

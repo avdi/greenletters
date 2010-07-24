@@ -2,4 +2,7 @@
 $:.unshift(File.expand_path("../lib", File.dirname(__FILE__)))
 require 'greenletters'
 require 'irb'
+
+GLP = Greenletters::Process
+GLP.const_set(:DEFAULT_LOG_LEVEL, ::Logger::DEBUG)
 IRB.start
