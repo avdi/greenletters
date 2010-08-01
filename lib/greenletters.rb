@@ -103,7 +103,7 @@ module Greenletters
     def <<(output)
       @buffer     << output
       @transcript << output
-      length = [@buffer.length, 256].min
+      length = [@buffer.length, 512].min
       @buffer = @buffer[-length, length]
       self
     end
@@ -242,7 +242,7 @@ module Greenletters
     end
 
     def call(process)
-      if pattern === process.status.exitstatus
+      if process.status && pattern === process.status.exitstatus
         @block.call(process, process.status)
         true
       else
@@ -267,8 +267,9 @@ module Greenletters
   end
 
   class Process
-    END_MARKER        = '__GREENLETTERS_PROCESS_ENDED__'
-    DEFAULT_LOG_LEVEL = ::Logger::WARN
+    END_MARKER              = '__GREENLETTERS_PROCESS_ENDED__'
+    DEFAULT_LOG_LEVEL       = ::Logger::WARN
+    DEFAULT_TIMEOUT         = 1.0
 
     # Shamelessly stolen from Rake
     RUBY_EXT =
@@ -289,6 +290,10 @@ module Greenletters
     attr_reader   :output_buffer # Output ready to be read from process
     attr_reader   :status        # :not_started -> :running -> :ended -> :exited
     attr_reader   :cwd          # Working directory for the command
+    attr_reader   :input
+    attr_reader   :output
+    attr_reader   :pid
+    attr_accessor :timeout
 
     def_delegators :input_buffer, :puts, :write, :print, :printf, :<<
     def_delegators :output_buffer, :rest, :rest_size, :check_until
@@ -318,6 +323,7 @@ module Greenletters
         t
       }
       @history = TranscriptHistoryBuffer.new(@transcript)
+      @timeout = options.fetch(:timeout) { DEFAULT_TIMEOUT }
     end
 
     def on(event, *args, &block)
@@ -327,6 +333,7 @@ module Greenletters
     def wait_for(event, *args, &block)
       raise "Already waiting for #{blocker}" if blocker
       t = add_blocking_trigger(event, *args, &block)
+      @logger.debug "Entering wait cycle for #{event}"
       process_events
     rescue
       unblock!
@@ -376,17 +383,22 @@ module Greenletters
         cmd = wrapped_command
         @logger.debug "executing #{cmd.join(' ')}"
         merge_environment(@env) do
-          @logger.debug "command environment:\n#{ENV.inspect}"
           @output, @input, @pid = PTY.spawn(*cmd)
         end
         @state = :running
-        @logger.debug "spawned pid #{@pid}"
+        @logger.debug "spawned pid #{@pid}; in: #{@input.inspect}; out: #{@output.inspect}"
       end
     end
 
     def flush_output_buffer!
       @logger.debug "flushing output buffer"
       @output_buffer.terminate
+    end
+
+    def kill!(signal="TERM")
+      handle_child_exit do
+        ::Process.kill(signal, @pid)
+      end
     end
 
     def alive?
@@ -421,6 +433,10 @@ module Greenletters
       Time.now
     end
 
+    def to_s
+      "Process<pid: #{pid}; in: #{input.inspect}; out: #{output.inspect}>"
+    end
+
     private
 
     attr_reader :triggers
@@ -439,14 +455,15 @@ module Greenletters
       raise StateError, "Process not started!" if not_started?
       handle_child_exit do
         while blocked?
-          @logger.debug "select()"
           input_handles  = input_buffer.string.empty? ? [] : [@input]
           output_handles = [@output]
-          error_handles  = [@input, @output]
+          error_handles  = [@input, @output].uniq
           timeout        = shortest_timeout
           @logger.debug "select() on #{[output_handles, input_handles, error_handles, timeout].inspect}"
+
           ready_handles = IO.select(
             output_handles, input_handles, error_handles, timeout)
+
           if ready_handles.nil?
             process_timeout
           else
@@ -625,13 +642,14 @@ module Greenletters
           raise SystemError,
                 "Interrupted (#{reason}) while waiting for #{blocker}.\n" \
                 "Recent activity:\n" +
-                @history.buffer
+                @history.buffer + "\n" + ("-" * 60) + "\n"
         end
         unblock!
       end
     end
 
     def catchup_trigger!(trigger)
+      @logger.debug "Catching up trigger #{trigger}"
       check_trigger(trigger)
     end
 
@@ -647,7 +665,7 @@ module Greenletters
       result = triggers.grep(TimeoutTrigger).map{|t|
         t.expiration_time - Time.now
       }.min
-      if result.nil? then result = 1.0 end
+      if result.nil? then result = @timeout end
       if result < 0 then result = 0 end
       result
     end

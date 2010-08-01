@@ -65,3 +65,4 @@ Feature: play adventure
     When I enter "quit"
     Then the process should exit succesfully
 
+

@@ -1,12 +1,23 @@
 require 'cucumber'
+require 'shellwords'
 
 module Greenletters
   module CucumberHelpers
     def greenletters_prepare_entry(text)
       text.chomp + "\n"
     end
+
     def greenletters_massage_pattern(text)
       Regexp.new(Regexp.escape(text.strip.tr_s(" \r\n\t", " ")).gsub('\ ', '\s+'))
+    end
+
+    # Override this in your Cucumber setup to customize how processes are
+    # constructed.
+    def make_greenletters_process(command_line, options = {})
+      command = Shellwords.shellwords(command_line)
+      options[:logger] = @greenletters_process_log if @greenletters_process_log
+      process_args = command + [options]
+      Greenletters::Process.new(*process_args)
     end
   end
 end
@@ -20,7 +31,7 @@ Before do
 end
 
 Given /^process activity is logged to "([^\"]*)"$/ do |filename|
-  logger = ::Logger.new(open(filename, 'w+'))
+  logger = ::Logger.new(open(filename, 'a+'))
   #logger.level = ::Logger::INFO
   logger.level = ::Logger::DEBUG
   @greenletters_process_log = logger
@@ -28,10 +39,13 @@ end
 
 Given /^a process (?:"([^\"]*)" )?from command "([^\"]*)"$/ do |name, command|
   name ||= "default"
-  options = {
-  }
-  options[:logger] = @greenletters_process_log if @greenletters_process_log
-  @greenletters_process_table[name] = Greenletters::Process.new(command, options)
+  @greenletters_process_table[name] = make_greenletters_process(command)
+end
+
+Given /^the process(?: "([^\"]*)")? has a timeout of ([0-9.]+) seconds$/ do
+  |name, length|
+  name ||= :"default"
+  @greenletters_process_table[name].timeout = length.to_f
 end
 
 Given /^I reply "([^\"]*)" to output "([^\"]*)"(?: from process "([^\"]*)")?$/ do
@@ -71,8 +85,9 @@ end
 Then /^I should see the following output(?: from process "([^\"]*)")?:$/ do
   |name, pattern|
   name ||= "default"
+  process = @greenletters_process_table[name]
   pattern = greenletters_massage_pattern(pattern)
-  @greenletters_process_table[name].wait_for(:output, pattern)
+  process.wait_for(:output, pattern)
 end
 
 Then /^I should see all the following outputs(?: from process "([^\"]*)")?:$/ do
