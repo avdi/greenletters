@@ -242,7 +242,7 @@ module Greenletters
     end
 
     def call(process)
-      if pattern === process.status.exitstatus
+      if process.status && pattern === process.status.exitstatus
         @block.call(process, process.status)
         true
       else
