@@ -272,12 +272,12 @@ module Greenletters
 
     # Shamelessly stolen from Rake
     RUBY_EXT =
-      ((Config::CONFIG['ruby_install_name'] =~ /\.(com|cmd|exe|bat|rb|sh)$/) ?
+      ((RbConfig::CONFIG['ruby_install_name'] =~ /\.(com|cmd|exe|bat|rb|sh)$/) ?
       "" :
-      Config::CONFIG['EXEEXT'])
+        RbConfig::CONFIG['EXEEXT'])
     RUBY       = File.join(
-      Config::CONFIG['bindir'],
-      Config::CONFIG['ruby_install_name'] + RUBY_EXT).
+      RbConfig::CONFIG['bindir'],
+      RbConfig::CONFIG['ruby_install_name'] + RUBY_EXT).
       sub(/.*\s.*/m, '"\&"')
 
     extend Forwardable
