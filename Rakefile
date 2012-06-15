@@ -5,7 +5,7 @@ rescue LoadError
 end
 
 task :default do
-  sh "rspec spec"
+  sh "bundle exec rspec spec"
 end
 
 task 'gem:release' => :default

@@ -11,14 +11,13 @@ Gem::Specification.new do |s|
   s.email = "avdi@avdi.org"
   s.executables = ["greenletters"]
   s.extra_rdoc_files = ["History.txt", "bin/greenletters"]
-  s.files = [".gitignore", "History.txt", "README.org", "Rakefile", "bin/greenletters", "examples/adventure.rb", "examples/cucumber/adventure.feature", "examples/cucumber/support/env.rb", "greenletters.gemspec", "lib/greenletters.rb", "lib/greenletters/cucumber_steps.rb", "script/console", "spec/greenletters_spec.rb", "spec/spec_helper.rb", "test/test_greenletters.rb", "version.txt"]
+  s.files = [".gitignore", "Gemfile", "Gemfile.lock", "History.txt", "README.org", "Rakefile", "bin/greenletters", "examples/adventure.rb", "examples/cucumber/adventure.feature", "examples/cucumber/support/env.rb", "greenletters.gemspec", "lib/greenletters.rb", "lib/greenletters/cucumber_steps.rb", "script/console", "spec/greenletters_spec.rb", "spec/spec_helper.rb", "version.txt"]
   s.homepage = "http://github.com/avdi/greenletters"
   s.rdoc_options = ["--main", "README.org"]
   s.require_paths = ["lib"]
   s.rubyforge_project = "greenletters"
   s.rubygems_version = "1.8.24"
   s.summary = "A Ruby console automation framework a la Expect"
-  s.test_files = ["test/test_greenletters.rb"]
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
