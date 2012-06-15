@@ -1,12 +1,14 @@
-
 begin
   require 'bones'
 rescue LoadError
   abort '### Please install the "bones" gem ###'
 end
 
-task :default => 'test:run'
-task 'gem:release' => 'test:run'
+task :default do
+  sh "bundle exec rspec spec"
+end
+
+task 'gem:release' => :default
 
 Bones {
   name         'greenletters'
@@ -14,6 +16,7 @@ Bones {
   email        'avdi@avdi.org'
   url          'http://github.com/avdi/greenletters'
   ignore_file  '.gitignore'
+  ignore_file '.idea'
   readme_file  'README.org'
 
   summary      'A Ruby console automation framework a la Expect'
