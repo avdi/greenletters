@@ -1,12 +1,14 @@
-
 begin
   require 'bones'
 rescue LoadError
   abort '### Please install the "bones" gem ###'
 end
 
-task :default => 'test:run'
-task 'gem:release' => 'test:run'
+task :default do
+  sh "rspec spec"
+end
+
+task 'gem:release' => :default
 
 Bones {
   name         'greenletters'
