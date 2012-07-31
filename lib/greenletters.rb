@@ -128,7 +128,7 @@ module Greenletters
     alias_method :exclusive?, :exclusive
 
     def initialize(options={}, &block)
-      @block        = block || lambda{}
+      @block        = block || lambda{|*|}
       @exclusive    = options.fetch(:exclusive) { false }
       @logger       = ::Logger.new($stdout)
       @interruption = :none
@@ -673,4 +673,3 @@ module Greenletters
 end
 
 Greenletters.require_all_libs_relative_to(__FILE__)
-
