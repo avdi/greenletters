@@ -516,6 +516,7 @@ module Greenletters
       # Soon we should get a PTY::ChildExited
       while running? || ended?
         @logger.debug "waiting for child #{@pid} to die"
+        PTY.check(@pid, true) if PTY.respond_to? :check
         sleep 0.1
       end
     end
