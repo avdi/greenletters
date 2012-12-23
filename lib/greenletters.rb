@@ -324,6 +324,10 @@ module Greenletters
       }
       @history = TranscriptHistoryBuffer.new(@transcript)
       @timeout = options.fetch(:timeout) { DEFAULT_TIMEOUT }
+
+      ObjectSpace.define_finalizer(self) do
+        kill!
+      end
     end
 
     def on(event, *args, &block)
@@ -397,6 +401,7 @@ module Greenletters
 
     def kill!(signal="TERM")
       handle_child_exit do
+        @logger.info "Killing process #{@pid}"
         ::Process.kill(signal, @pid)
       end
     end
