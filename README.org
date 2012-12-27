@@ -77,7 +77,7 @@ Or, in Cucumber format:
   pseudoterminal under Ruby's control. Of course, this means that it is
   MacOSX/Linux/*NIX-only; Windows users need not apply.
 
-  The advantage of using a PTY is that *any* output - inclding output written to
+  The advantage of using a PTY is that *any* output - including output written to
   the console instead of STDOUT/STDERR - will be captured by Greenletters.
 
 * Cucumber
