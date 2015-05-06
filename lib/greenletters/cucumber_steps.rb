@@ -116,8 +116,7 @@ When /^I enter "([^\"]*)"(?: into process "([^\"]*)")?$/ do
   @greenletters_process_table[name] << greenletters_prepare_entry(input)
 end
 
-Then /^the process(?: "([^\"]*)")? should exit succesfully$/ do |name|
+Then /^the process(?: "([^\"]*)")? should exit successfully$/ do |name|
   name ||= "default"
   @greenletters_process_table[name].wait_for(:exit, 0)
 end
-

@@ -32,7 +32,7 @@ Feature: play adventure
     rocky bed.
     """
     When I enter "quit" into process "adventure"
-    Then the process "adventure" should exit succesfully
+    Then the process "adventure" should exit successfully
 
   Scenario: play first few rooms (default process)
     Given process activity is logged to "greenletters.log"
@@ -63,6 +63,4 @@ Feature: play adventure
     rocky bed.
     """
     When I enter "quit"
-    Then the process should exit succesfully
-
-
+    Then the process should exit successfully
