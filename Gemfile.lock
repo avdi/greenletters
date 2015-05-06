@@ -1,5 +1,5 @@
 GEM
-  remote: http://rubygems.org/
+  remote: https://rubygems.org/
   specs:
     bones (3.8.0)
       little-plugger (~> 1.1.3)
